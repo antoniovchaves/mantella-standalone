@@ -14,6 +14,11 @@ import {
   checkStatus,
 } from '../services/mantellaApi';
 
+function typingDelay(text: string): Promise<void> {
+  const ms = Math.min(600 + text.length * 8, 3000);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function makeMessage(
   type: ChatMessage['type'],
   content: string,
@@ -95,11 +100,12 @@ export function useConversation() {
         const res = await sendPlayerInput(payload);
         setLastResponse(res);
         const items = Array.isArray(res) ? res : [res];
-        items.forEach((item) => {
+        for (const item of items) {
           if (item.npc_response) {
+            await typingDelay(item.npc_response);
             addMessage(makeMessage('npc', item.npc_response, item.npc_name, item.action));
           }
-        });
+        }
         setState('ACTIVE');
       } catch (err) {
         addMessage(makeMessage('error', `Erro ao receber resposta: ${(err as Error).message}`));
