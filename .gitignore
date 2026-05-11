@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Ambientes virtuais
+MantellaEnv/
+venv/
+env/
+.venv/
+
+# Anaconda/Conda
+*.conda
+*.tar.bz2
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
+logging.log
+
+# Configurações sensíveis
+GPT_SECRET_KEY.txt
+*.key
+*.secret
+
+# Arquivos de áudio gerados em runtime (voicelines)
+# Os .wav em data/ são sons de sistema do Mantella e devem ser commitados
+Mantella-0.14/Mantella-0.14/src/tmp/
+*.mp3
+
+# Mantella dados de conversa (gerados em runtime)
+data/Skyrim/conversations/
+data/Fallout4/conversations/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Arquivos temporários
+*.tmp
+*.temp
+_MEI*/
+
+# Modelos de voz baixados (grandes demais para o git)
+Mantella-0.14/Mantella-0.14/models/
+*.onnx
