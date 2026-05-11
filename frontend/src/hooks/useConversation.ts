@@ -94,7 +94,12 @@ export function useConversation() {
       try {
         const res = await sendPlayerInput(payload);
         setLastResponse(res);
-        addMessage(makeMessage('npc', res.npc_response, res.npc_name, res.action));
+        const items = Array.isArray(res) ? res : [res];
+        items.forEach((item) => {
+          if (item.npc_response) {
+            addMessage(makeMessage('npc', item.npc_response, item.npc_name, item.action));
+          }
+        });
         setState('ACTIVE');
       } catch (err) {
         addMessage(makeMessage('error', `Erro ao receber resposta: ${(err as Error).message}`));

@@ -45,8 +45,8 @@ export async function startConversation(payload: StartConversationPayload): Prom
   return post('/start_conversation', payload);
 }
 
-export async function sendPlayerInput(payload: PlayerInputPayload): Promise<MantellaResponse> {
-  return post<MantellaResponse>('/player_input', payload);
+export async function sendPlayerInput(payload: PlayerInputPayload): Promise<MantellaResponse | MantellaResponse[]> {
+  return post<MantellaResponse | MantellaResponse[]>('/player_input', payload);
 }
 
 export async function endConversation(): Promise<unknown> {

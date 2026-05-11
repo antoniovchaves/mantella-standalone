@@ -58,11 +58,11 @@ def _hex_to_int(value: str) -> int:
 async def _post_mantella(body: dict, timeout: float = TIMEOUT_SHORT) -> dict:
     """Envia POST /mantella e retorna o JSON de resposta como dict."""
     url = f"{MANTELLA_BASE}/mantella"
-    log.info(f"→ POST {url} | type={body.get('mantella_request_type')}")
+    log.info(f">> POST {url} | type={body.get('mantella_request_type')}")
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, json=body)
-        log.info(f"← {resp.status_code}")
+        log.info(f"<< {resp.status_code}")
         try:
             return resp.json()
         except Exception:
@@ -180,6 +180,8 @@ async def start_conversation(request: Request):
     return JSONResponse(data)
 
 
+STOP_REPLY_TYPES = {"mantella_player_talk", "mantella_end_conversation", "error"}
+
 @app.post("/player_input")
 async def player_input(request: Request):
     body = await request.json()
@@ -193,15 +195,48 @@ async def player_input(request: Request):
     })
     log.info(f"player_input reply_type: {input_data.get('mantella_reply_type')}")
 
-    # Passo 2: solicita a resposta do NPC (chamada longa — aguarda o LLM)
-    continue_data = await _post_mantella({
-        "mantella_request_type": "mantella_continue_conversation",
-        "mantella_topicinfofile": 1,
-        "mantella_context": {},
-    }, timeout=TIMEOUT_LLM)
-    log.info(f"continue reply_type: {continue_data.get('mantella_reply_type')}")
+    # Passo 2: loop de continue_conversation — coleta todas as falas do turno
+    # Cada chamada retorna uma fala; paramos quando o Mantella pede a vez do jogador
+    sentences: list[dict] = []
+    MAX_SENTENCES = 10
 
-    return JSONResponse(_extract_npc_response(continue_data))
+    for i in range(MAX_SENTENCES):
+        continue_data = await _post_mantella({
+            "mantella_request_type": "mantella_continue_conversation",
+            "mantella_topicinfofile": 1,
+            "mantella_context": {},
+        }, timeout=TIMEOUT_LLM)
+
+        reply_type = continue_data.get("mantella_reply_type", "")
+        log.info(f"continue [{i+1}] reply_type: {reply_type} | raw: {json.dumps(continue_data)}")
+
+        npc_talk = continue_data.get("mantella_npc_talk")
+        if npc_talk and npc_talk.get("mantella_actor_line_to_speak"):
+            sentences.append({
+                "speaker": npc_talk.get("mantella_actor_speaker", ""),
+                "text": npc_talk.get("mantella_actor_line_to_speak", ""),
+                "actions": npc_talk.get("mantella_actor_actions", []),
+            })
+
+        if reply_type in STOP_REPLY_TYPES:
+            break
+        # mantella_npc_talk sem conteúdo = mantella aguardando jogador
+        if reply_type == "mantella_npc_talk" and not npc_talk:
+            break
+
+    if not sentences:
+        return JSONResponse([{"npc_name": "", "npc_response": "", "action": None}])
+
+    # Retorna sempre uma lista — o frontend adiciona cada item como mensagem separada
+    result = []
+    for s in sentences:
+        actions = [a.get("identifier") for a in s["actions"] if isinstance(a, dict) and a.get("identifier")]
+        result.append({
+            "npc_name": s["speaker"],
+            "npc_response": s["text"],
+            "action": actions[0] if actions else None,
+        })
+    return JSONResponse(result)
 
 
 @app.post("/end_conversation")
