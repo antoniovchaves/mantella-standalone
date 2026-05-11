@@ -1,99 +1,99 @@
 // =============================================================================
-// CONFIGURAÇÃO DO EXPERIMENTO
-// Edite este arquivo para personalizar o contexto e as perguntas.
+// EXPERIMENT CONFIGURATION
+// Edit this file to customize the context and questions.
 // =============================================================================
 
 export interface LikertQuestion {
   id: string;
   text: string;
-  anchorLow: string;  // rótulo do extremo esquerdo (ex: "Discordo totalmente")
-  anchorHigh: string; // rótulo do extremo direito (ex: "Concordo totalmente")
+  anchorLow: string; // left-end label (e.g. "Strongly disagree")
+  anchorHigh: string; // right-end label (e.g. "Strongly agree")
 }
 
 // -----------------------------------------------------------------------------
-// TEXTO DE CONTEXTO
-// Mostrado ao participante antes de iniciar qualquer conversa.
-// Suporta quebras de linha com \n\n para parágrafos.
+// CONTEXT TEXT
+// Shown to the participant before starting any conversation.
+// Supports line breaks with \n\n for paragraphs.
 // -----------------------------------------------------------------------------
 export const EXPERIMENT_CONTEXT = `
-Bem-vindo ao experimento de avaliação de diálogos com personagens virtuais.
+Welcome to the NPC dialogue evaluation experiment.
 
-Neste estudo, você irá conversar com um personagem do jogo Skyrim por meio de uma interface de chat. O personagem é controlado por um modelo de linguagem (LLM) integrado ao sistema Mantella.
+In this study, you will have a conversation with a character via a chat interface. The character is controlled by a large language model (LLM) integrated with the Mantella system.
 
-Seu objetivo é conduzir uma conversa natural com o personagem, como faria dentro do jogo. Não há respostas certas ou erradas — queremos entender como você percebe a experiência de interagir com este tipo de personagem.
+Your goal is to have a natural conversation with the character. There are no right or wrong answers — we want to understand how you perceive the experience of interacting with this type of character.
 
-Após a conversa, você responderá um breve questionário sobre sua experiência.
+After the conversation, you will answer a brief questionnaire about your experience.
 
-Instruções:
-• Converse normalmente com o personagem por pelo menos 5 mensagens
-• Quando sentir que a conversa chegou a um ponto natural de encerramento, clique em "Encerrar experimento"
-• Em seguida, responda o questionário com sinceridade
+Instructions:
+• Have a normal conversation with the character for at least 5 messages
+• When you feel the conversation has reached a natural ending point, click "End experiment"
+• Then answer the questionnaire honestly
 
-Este experimento tem duração estimada de 10 a 15 minutos.
+This experiment has an estimated duration of 10 to 15 minutes.
 
-Obrigado por participar!
+Thank you for participating!
 `.trim();
 
 // -----------------------------------------------------------------------------
-// PERGUNTAS DO QUESTIONÁRIO
-// Cada pergunta tem: id único, texto, âncora baixa e âncora alta.
-// Para escala Likert de 7 pontos:
-//   Range: slider contínuo de 1 a 7
-//   Clássico: botões rotulados 1–7
+// QUESTIONNAIRE QUESTIONS
+// Each question has: unique id, text, low anchor and high anchor.
+// For a 7-point Likert scale:
+//   Range: continuous slider from 1 to 7
+//   Classic: buttons labeled 1–7
 // -----------------------------------------------------------------------------
 export const QUESTIONNAIRE: LikertQuestion[] = [
   {
-    id: 'q1',
-    text: 'O personagem pareceu compreender o que eu quis dizer.',
-    anchorLow: 'Discordo totalmente',
-    anchorHigh: 'Concordo totalmente',
+    id: "q1",
+    text: "The character seemed to understand what I meant.",
+    anchorLow: "Strongly disagree",
+    anchorHigh: "Strongly agree",
   },
   {
-    id: 'q2',
-    text: 'As respostas do personagem foram coerentes com sua personalidade.',
-    anchorLow: 'Discordo totalmente',
-    anchorHigh: 'Concordo totalmente',
+    id: "q2",
+    text: "The character's responses were consistent with their personality.",
+    anchorLow: "Strongly disagree",
+    anchorHigh: "Strongly agree",
   },
   {
-    id: 'q3',
-    text: 'A conversa me pareceu natural e fluida.',
-    anchorLow: 'Totalmente artificial',
-    anchorHigh: 'Totalmente natural',
+    id: "q3",
+    text: "The conversation felt natural and fluid.",
+    anchorLow: "Completely artificial",
+    anchorHigh: "Completely natural",
   },
   {
-    id: 'q4',
-    text: 'Senti que estava conversando com um personagem que "existe" no mundo do jogo.',
-    anchorLow: 'Discordo totalmente',
-    anchorHigh: 'Concordo totalmente',
+    id: "q4",
+    text: 'I felt like I was talking to a character that "exists" in the world.',
+    anchorLow: "Strongly disagree",
+    anchorHigh: "Strongly agree",
   },
   {
-    id: 'q5',
-    text: 'A experiência foi satisfatória.',
-    anchorLow: 'Nada satisfatória',
-    anchorHigh: 'Muito satisfatória',
+    id: "q5",
+    text: "The experience was satisfying.",
+    anchorLow: "Not at all satisfying",
+    anchorHigh: "Very satisfying",
   },
   {
-    id: 'q6',
-    text: 'Eu me engajei emocionalmente com o personagem durante a conversa.',
-    anchorLow: 'Nenhum engajamento',
-    anchorHigh: 'Alto engajamento',
+    id: "q6",
+    text: "I was emotionally engaged with the character during the conversation.",
+    anchorLow: "No engagement",
+    anchorHigh: "High engagement",
   },
   {
-    id: 'q7',
-    text: 'Gostaria de ter conversas assim com outros personagens do jogo.',
-    anchorLow: 'Discordo totalmente',
-    anchorHigh: 'Concordo totalmente',
+    id: "q7",
+    text: "I would like to have conversations like this with other characters.",
+    anchorLow: "Strongly disagree",
+    anchorHigh: "Strongly agree",
   },
 ];
 
 // -----------------------------------------------------------------------------
-// METADADOS DO EXPERIMENTO
-// Incluídos no JSON/CSV exportado.
+// EXPERIMENT METADATA
+// Included in the exported JSON/CSV.
 // -----------------------------------------------------------------------------
 export const EXPERIMENT_META = {
-  title: 'Avaliação de Diálogos com NPCs via LLM',
-  version: '1.0',
-  scale: 5,         // pontos na escala Likert
+  title: "NPC Dialogue Evaluation via LLM",
+  version: "1.0",
+  scale: 5, // Likert scale points
   scaleMin: 1,
   scaleMax: 5,
 };

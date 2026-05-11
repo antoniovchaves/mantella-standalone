@@ -1,18 +1,18 @@
-import { useState, useCallback, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useCallback, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 import type {
   ConversationState,
   ChatMessage,
   Player,
   NPC,
   ConversationLog,
-} from '../types/mantella';
+} from "../types/mantella";
 import {
   startConversation,
   sendPlayerInput,
   endConversation,
   checkStatus,
-} from '../services/mantellaApi';
+} from "../services/mantellaApi";
 
 function typingDelay(text: string): Promise<void> {
   const ms = Math.min(600 + text.length * 8, 3000);
@@ -20,16 +20,16 @@ function typingDelay(text: string): Promise<void> {
 }
 
 function makeMessage(
-  type: ChatMessage['type'],
+  type: ChatMessage["type"],
   content: string,
   sender?: string,
-  action?: string | null
+  action?: string | null,
 ): ChatMessage {
   return { id: uuidv4(), type, content, sender, timestamp: new Date(), action };
 }
 
 export function useConversation() {
-  const [state, setState] = useState<ConversationState>('IDLE');
+  const [state, setState] = useState<ConversationState>("IDLE");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mantellaOnline, setMantellaOnline] = useState<boolean | null>(null);
   const [logs, setLogs] = useState<ConversationLog[]>([]);
@@ -52,7 +52,7 @@ export function useConversation() {
 
   const begin = useCallback(
     async (player: Player, npcs: NPC[]) => {
-      setState('CONNECTING');
+      setState("CONNECTING");
       setMessages([]);
       sessionRef.current = { player, npcs };
 
@@ -60,38 +60,40 @@ export function useConversation() {
         player_name: player.name,
         player_race: player.race,
         player_gender: player.gender,
-        location: player.location,
         in_game_time: player.in_game_time,
         npcs,
       };
 
+      console.log("PAYLOAD SENT:", JSON.stringify(payload));
       setLastRequest(payload);
 
       try {
         const res = await startConversation(payload);
         setLastResponse(res);
-        setState('ACTIVE');
-        const npcNames = npcs.map((n) => n.name).join(', ');
+        setState("ACTIVE");
+        const npcNames = npcs.map((n) => n.name).join(", ");
         addMessage(
           makeMessage(
-            'system',
-            `Conversa iniciada em ${player.location} · ${player.in_game_time} com ${npcNames}`
-          )
+            "system",
+            `Conversation started · ${player.in_game_time} with ${npcNames}`,
+          ),
         );
       } catch (err) {
-        setState('IDLE');
-        addMessage(makeMessage('error', `Falha ao conectar: ${(err as Error).message}`));
+        setState("IDLE");
+        addMessage(
+          makeMessage("error", `Failed to connect: ${(err as Error).message}`),
+        );
         setMantellaOnline(false);
       }
     },
-    [addMessage]
+    [addMessage],
   );
 
   const speak = useCallback(
     async (transcript: string, playerName: string) => {
-      if (state !== 'ACTIVE') return;
-      addMessage(makeMessage('player', transcript, playerName));
-      setState('WAITING');
+      if (state !== "ACTIVE") return;
+      addMessage(makeMessage("player", transcript, playerName));
+      setState("WAITING");
 
       const payload = { transcript };
       setLastRequest(payload);
@@ -103,20 +105,27 @@ export function useConversation() {
         for (const item of items) {
           if (item.npc_response) {
             await typingDelay(item.npc_response);
-            addMessage(makeMessage('npc', item.npc_response, item.npc_name, item.action));
+            addMessage(
+              makeMessage("npc", item.npc_response, item.npc_name, item.action),
+            );
           }
         }
-        setState('ACTIVE');
+        setState("ACTIVE");
       } catch (err) {
-        addMessage(makeMessage('error', `Erro ao receber resposta: ${(err as Error).message}`));
-        setState('ACTIVE');
+        addMessage(
+          makeMessage(
+            "error",
+            `Error receiving response: ${(err as Error).message}`,
+          ),
+        );
+        setState("ACTIVE");
       }
     },
-    [state, addMessage]
+    [state, addMessage],
   );
 
   const end = useCallback(async () => {
-    if (state === 'IDLE') return;
+    if (state === "IDLE") return;
     try {
       await endConversation();
     } catch {
@@ -135,13 +144,13 @@ export function useConversation() {
       setLogs((prev) => [log, ...prev]);
     }
 
-    addMessage(makeMessage('system', 'Conversa encerrada.'));
-    setState('ENDED');
+    addMessage(makeMessage("system", "Conversation ended."));
+    setState("ENDED");
     sessionRef.current = null;
   }, [state, messages, addMessage]);
 
   const reset = useCallback(() => {
-    setState('IDLE');
+    setState("IDLE");
     setMessages([]);
     setLastRequest(null);
     setLastResponse(null);

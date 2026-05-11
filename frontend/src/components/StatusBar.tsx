@@ -1,11 +1,11 @@
 import type { ConversationState } from "../types/mantella";
 
 const STATE_LABELS: Record<ConversationState, string> = {
-  IDLE: "Aguardando",
-  CONNECTING: "Conectando...",
-  ACTIVE: "Em andamento",
-  WAITING: "Aguardando NPC...",
-  ENDED: "Encerrada",
+  IDLE: "Idle",
+  CONNECTING: "Connecting...",
+  ACTIVE: "In progress",
+  WAITING: "Waiting for NPC...",
+  ENDED: "Ended",
 };
 
 const STATE_COLORS: Record<ConversationState, string> = {
@@ -32,7 +32,7 @@ export function StatusBar({ state, mantellaOnline, onPing }: Props) {
 
   const dotLabel =
     mantellaOnline === null
-      ? "Verificando..."
+      ? "Checking..."
       : mantellaOnline
         ? "Mantella online"
         : "Mantella offline";
@@ -42,7 +42,7 @@ export function StatusBar({ state, mantellaOnline, onPing }: Props) {
       <div className="flex items-center gap-2">
         <button
           onClick={onPing}
-          title="Verificar conexão"
+          title="Check connection"
           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
         >
           <div

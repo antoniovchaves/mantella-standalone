@@ -6,6 +6,7 @@ Também lê os arquivos de override de personagens do Mantella
 """
 
 import os
+import re
 import json
 import csv
 import httpx
@@ -168,7 +169,7 @@ async def start_conversation(request: Request):
         "mantella_input_type": "mantella_text_input",
         "mantella_actors": actors,
         "mantella_context": {
-            "mantella_location": body.get("location", "Skyrim"),
+            "mantella_location": "American Diner",
             "mantella_time": hour,
             "mantella_gamedays": 1,
             "mantella_ingame_events": [],
@@ -181,6 +182,36 @@ async def start_conversation(request: Request):
 
 
 STOP_REPLY_TYPES = {"mantella_player_talk", "mantella_end_conversation", "error"}
+
+_SPEECH_SPLIT_RE = re.compile(r'\n(?=[A-Z][a-zA-Z\s]+:\s)')
+_SPEAKER_PREFIX_RE = re.compile(r'^([A-Z][a-zA-Z\s]+):\s+(.*)', re.DOTALL)
+
+def _split_speech(speaker: str, text: str, actions: list) -> list[dict]:
+    """Split a single line_to_speak that may contain multiple 'Name: text' segments."""
+    parts = _SPEECH_SPLIT_RE.split(text)
+    result = []
+    for i, part in enumerate(parts):
+        m = _SPEAKER_PREFIX_RE.match(part)
+        if m:
+            result.append({"speaker": m.group(1).strip(), "text": m.group(2).strip(), "actions": actions if i == 0 else []})
+        else:
+            result.append({"speaker": speaker, "text": part.strip(), "actions": actions if i == 0 else []})
+    return [s for s in result if s["text"]]
+
+
+def _clean_speech(text: str) -> str:
+    """Remove action markers and normalize whitespace from NPC speech."""
+    # 1. Remove *action descriptions*
+    text = re.sub(r'\*[^*]+\*', '', text)
+    # 2. Collapse extra spaces created by removal
+    text = re.sub(r' +', ' ', text).strip()
+    # 3. Strip surrounding quotes only when the entire message is wrapped
+    if (text.startswith('"') and text.endswith('"')) or \
+       (text.startswith("'") and text.endswith("'")):
+        text = text[1:-1].strip()
+    # 4. Final whitespace pass
+    text = re.sub(r' +', ' ', text).strip()
+    return text
 
 @app.post("/player_input")
 async def player_input(request: Request):
@@ -212,11 +243,11 @@ async def player_input(request: Request):
 
         npc_talk = continue_data.get("mantella_npc_talk")
         if npc_talk and npc_talk.get("mantella_actor_line_to_speak"):
-            sentences.append({
-                "speaker": npc_talk.get("mantella_actor_speaker", ""),
-                "text": npc_talk.get("mantella_actor_line_to_speak", ""),
-                "actions": npc_talk.get("mantella_actor_actions", []),
-            })
+            sentences.extend(_split_speech(
+                speaker=npc_talk.get("mantella_actor_speaker", ""),
+                text=npc_talk.get("mantella_actor_line_to_speak", ""),
+                actions=npc_talk.get("mantella_actor_actions", []),
+            ))
 
         if reply_type in STOP_REPLY_TYPES:
             break
@@ -230,12 +261,17 @@ async def player_input(request: Request):
     # Retorna sempre uma lista — o frontend adiciona cada item como mensagem separada
     result = []
     for s in sentences:
+        cleaned = _clean_speech(s["text"])
+        if not cleaned:
+            continue
         actions = [a.get("identifier") for a in s["actions"] if isinstance(a, dict) and a.get("identifier")]
         result.append({
             "npc_name": s["speaker"],
-            "npc_response": s["text"],
+            "npc_response": cleaned,
             "action": actions[0] if actions else None,
         })
+    if not result:
+        return JSONResponse([{"npc_name": "", "npc_response": "", "action": None}])
     return JSONResponse(result)
 
 

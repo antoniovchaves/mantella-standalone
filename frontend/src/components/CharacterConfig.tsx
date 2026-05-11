@@ -1,15 +1,23 @@
-import { useState, useEffect } from 'react';
-import type { Player, NPC, Race, Gender } from '../types/mantella';
-import type { ConversationState } from '../types/mantella';
-import { NPC_PRESETS } from '../data/presets';
-import { OverrideNPCPanel } from './OverrideNPCPanel';
+import { useState, useEffect } from "react";
+import type { Player, NPC, Race, Gender } from "../types/mantella";
+import type { ConversationState } from "../types/mantella";
+import { NPC_PRESETS } from "../data/presets";
+import { OverrideNPCPanel } from "./OverrideNPCPanel";
 
 const RACES: Race[] = [
-  'Nord', 'Imperial', 'Breton', 'Dunmer', 'Altmer',
-  'Bosmer', 'Orc', 'Khajiit', 'Argonian', 'Redguard',
+  "Nord",
+  "Imperial",
+  "Breton",
+  "Dunmer",
+  "Altmer",
+  "Bosmer",
+  "Orc",
+  "Khajiit",
+  "Argonian",
+  "Redguard",
 ];
 
-const STORAGE_KEY = 'mantella_config';
+const STORAGE_KEY = "mantella_config";
 
 function loadFromStorage(): { player: Player; npcs: NPC[] } | null {
   try {
@@ -25,11 +33,10 @@ function saveToStorage(player: Player, npcs: NPC[]) {
 }
 
 const DEFAULT_PLAYER: Player = {
-  name: 'Dovahkiin',
-  race: 'Nord',
-  gender: 'male',
-  location: 'Whiterun',
-  in_game_time: '14:30',
+  name: "Dovahkiin",
+  race: "Nord",
+  gender: "male",
+  in_game_time: "20:00",
 };
 
 interface Props {
@@ -37,11 +44,21 @@ interface Props {
   onStart: (player: Player, npcs: NPC[]) => void;
   onEnd: () => void;
   onReset: () => void;
+  initialPlayerName?: string;
 }
 
-export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
+export function CharacterConfig({
+  state,
+  onStart,
+  onEnd,
+  onReset,
+  initialPlayerName,
+}: Props) {
   const saved = loadFromStorage();
-  const [player, setPlayer] = useState<Player>(saved?.player ?? DEFAULT_PLAYER);
+  const [player, setPlayer] = useState<Player>({
+    ...(saved?.player ?? DEFAULT_PLAYER),
+    ...(initialPlayerName ? { name: initialPlayerName } : {}),
+  });
   const [npcs, setNpcs] = useState<NPC[]>(saved?.npcs ?? []);
   const [editingNpc, setEditingNpc] = useState<NPC | null>(null);
   const [isAddingNpc, setIsAddingNpc] = useState(false);
@@ -50,7 +67,8 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
     saveToStorage(player, npcs);
   }, [player, npcs]);
 
-  const isActive = state === 'ACTIVE' || state === 'WAITING' || state === 'CONNECTING';
+  const isActive =
+    state === "ACTIVE" || state === "WAITING" || state === "CONNECTING";
 
   function applyPreset(presetId: string) {
     const preset = NPC_PRESETS.find((p) => p.id === presetId);
@@ -58,9 +76,6 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
     const already = npcs.find((n) => n.name === preset.npc.name);
     if (!already) {
       setNpcs((prev) => [...prev, preset.npc]);
-    }
-    if (preset.suggestedLocation && !isActive) {
-      setPlayer((p) => ({ ...p, location: preset.suggestedLocation! }));
     }
   }
 
@@ -73,13 +88,23 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
   }
 
   function getInitials(name: string) {
-    return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
   }
 
   const blankNpc: NPC = {
-    name: '', race: 'Nord', gender: 'male',
-    is_follower: false, is_enemy: false, relationship_rank: 0,
-    ref_id: '0x00000001', base_id: '0x00000002',
+    name: "",
+    race: "Nord",
+    gender: "male",
+    is_follower: false,
+    is_enemy: false,
+    relationship_rank: 0,
+    ref_id: "0x00000001",
+    base_id: "0x00000002",
   };
 
   return (
@@ -89,53 +114,51 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
         <h1 className="text-sm font-semibold tracking-widest text-amber-500/80 uppercase">
           Mantella Standalone
         </h1>
-        <p className="text-xs text-stone-600 mt-0.5">Interface de simulação</p>
+        <p className="text-xs text-stone-600 mt-0.5">Simulation interface</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
-
         {/* Player config */}
         <section>
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Jogador</h2>
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">
+            Player
+          </h2>
           <div className="flex flex-col gap-2">
             <input
               disabled={isActive}
               value={player.name}
-              onChange={(e) => updatePlayer('name', e.target.value)}
-              placeholder="Nome"
+              onChange={(e) => updatePlayer("name", e.target.value)}
+              placeholder="Name"
               className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 disabled:opacity-40"
             />
             <div className="grid grid-cols-2 gap-2">
               <select
                 disabled={isActive}
                 value={player.race}
-                onChange={(e) => updatePlayer('race', e.target.value as Race)}
+                onChange={(e) => updatePlayer("race", e.target.value as Race)}
                 className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-700 disabled:opacity-40"
               >
-                {RACES.map((r) => <option key={r}>{r}</option>)}
+                {RACES.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
               </select>
               <select
                 disabled={isActive}
                 value={player.gender}
-                onChange={(e) => updatePlayer('gender', e.target.value as Gender)}
+                onChange={(e) =>
+                  updatePlayer("gender", e.target.value as Gender)
+                }
                 className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-700 disabled:opacity-40"
               >
-                <option value="male">Masculino</option>
-                <option value="female">Feminino</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
               </select>
             </div>
             <input
               disabled={isActive}
-              value={player.location}
-              onChange={(e) => updatePlayer('location', e.target.value)}
-              placeholder="Localização"
-              className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 disabled:opacity-40"
-            />
-            <input
-              disabled={isActive}
               value={player.in_game_time}
-              onChange={(e) => updatePlayer('in_game_time', e.target.value)}
-              placeholder="Hora (HH:MM)"
+              onChange={(e) => updatePlayer("in_game_time", e.target.value)}
+              placeholder="Time (HH:MM)"
               pattern="[0-9]{2}:[0-9]{2}"
               className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 disabled:opacity-40"
             />
@@ -144,7 +167,9 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
 
         {/* Presets */}
         <section>
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Presets de NPC</h2>
+          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">
+            NPC Presets
+          </h2>
           <div className="flex flex-wrap gap-1.5">
             {NPC_PRESETS.map((p) => (
               <button
@@ -159,7 +184,7 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
           </div>
         </section>
 
-        {/* NPCs do Mantella (override) */}
+        {/* Mantella NPCs (override) */}
         <OverrideNPCPanel
           disabled={isActive}
           onAddNPC={(npc) => {
@@ -176,30 +201,38 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
             </h2>
             {!isActive && (
               <button
-                onClick={() => { setEditingNpc(blankNpc); setIsAddingNpc(true); }}
+                onClick={() => {
+                  setEditingNpc(blankNpc);
+                  setIsAddingNpc(true);
+                }}
                 className="text-xs text-amber-600 hover:text-amber-400 transition-colors"
               >
-                + Adicionar
+                + Add
               </button>
             )}
           </div>
 
           {npcs.length === 0 && (
-            <p className="text-xs text-stone-600 italic">Nenhum NPC configurado.</p>
+            <p className="text-xs text-stone-600 italic">No NPCs configured.</p>
           )}
 
           <div className="flex flex-col gap-2">
             {npcs.map((npc, i) => (
-              <div key={i} className="flex items-center gap-2.5 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2">
+              <div
+                key={i}
+                className="flex items-center gap-2.5 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2"
+              >
                 <div className="w-8 h-8 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-[10px] font-semibold text-stone-400 flex-shrink-0">
                   {getInitials(npc.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-stone-200 truncate">{npc.name}</div>
+                  <div className="text-sm font-medium text-stone-200 truncate">
+                    {npc.name}
+                  </div>
                   <div className="text-xs text-stone-600">
-                    {npc.race} · {npc.gender === 'male' ? '♂' : '♀'}
-                    {npc.is_follower && ' · Companheiro'}
-                    {npc.is_enemy && ' · Inimigo'}
+                    {npc.race} · {npc.gender === "male" ? "♂" : "♀"}
+                    {npc.is_follower && " · Follower"}
+                    {npc.is_enemy && " · Enemy"}
                   </div>
                 </div>
                 {!isActive && (
@@ -224,21 +257,24 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
               setEditingNpc(null);
               setIsAddingNpc(false);
             }}
-            onCancel={() => { setEditingNpc(null); setIsAddingNpc(false); }}
+            onCancel={() => {
+              setEditingNpc(null);
+              setIsAddingNpc(false);
+            }}
           />
         )}
       </div>
 
       {/* Actions */}
       <div className="px-4 py-4 border-t border-stone-800 flex flex-col gap-2">
-        {state === 'IDLE' || state === 'ENDED' ? (
+        {state === "IDLE" || state === "ENDED" ? (
           <>
-            {state === 'ENDED' && (
+            {state === "ENDED" && (
               <button
                 onClick={onReset}
                 className="w-full py-2 text-sm text-stone-400 border border-stone-700 rounded-lg hover:border-stone-500 transition-colors"
               >
-                Nova conversa
+                New conversation
               </button>
             )}
             <button
@@ -246,19 +282,22 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
               disabled={npcs.length === 0 || !player.name}
               className="w-full py-2.5 text-sm font-semibold bg-amber-800 hover:bg-amber-700 text-amber-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              ▶ Iniciar conversa
+              ▶ Start conversation
             </button>
           </>
-        ) : state === 'CONNECTING' ? (
-          <button disabled className="w-full py-2.5 text-sm text-stone-500 border border-stone-700 rounded-lg animate-pulse">
-            Conectando...
+        ) : state === "CONNECTING" ? (
+          <button
+            disabled
+            className="w-full py-2.5 text-sm text-stone-500 border border-stone-700 rounded-lg animate-pulse"
+          >
+            Connecting...
           </button>
         ) : (
           <button
             onClick={onEnd}
             className="w-full py-2.5 text-sm font-semibold border border-red-900 text-red-400 hover:bg-red-950/40 rounded-lg transition-colors"
           >
-            ✕ Encerrar conversa
+            ✕ End conversation
           </button>
         )}
       </div>
@@ -266,53 +305,121 @@ export function CharacterConfig({ state, onStart, onEnd, onReset }: Props) {
   );
 }
 
-function NpcEditor({ npc, onSave, onCancel }: { npc: NPC; onSave: (n: NPC) => void; onCancel: () => void }) {
+function NpcEditor({
+  npc,
+  onSave,
+  onCancel,
+}: {
+  npc: NPC;
+  onSave: (n: NPC) => void;
+  onCancel: () => void;
+}) {
   const [form, setForm] = useState<NPC>(npc);
 
   function set<K extends keyof NPC>(key: K, value: NPC[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const RACES: Race[] = ['Nord','Imperial','Breton','Dunmer','Altmer','Bosmer','Orc','Khajiit','Argonian','Redguard'];
+  const RACES: Race[] = [
+    "Nord",
+    "Imperial",
+    "Breton",
+    "Dunmer",
+    "Altmer",
+    "Bosmer",
+    "Orc",
+    "Khajiit",
+    "Argonian",
+    "Redguard",
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-stone-950 border border-stone-700 rounded-xl p-5 w-full max-w-sm flex flex-col gap-3 shadow-2xl">
-        <h3 className="text-sm font-semibold text-amber-500">Configurar NPC</h3>
-        <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Nome" className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none" />
+        <h3 className="text-sm font-semibold text-amber-500">Configure NPC</h3>
+        <input
+          value={form.name}
+          onChange={(e) => set("name", e.target.value)}
+          placeholder="Name"
+          className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none"
+        />
         <div className="grid grid-cols-2 gap-2">
-          <select value={form.race} onChange={(e) => set('race', e.target.value as Race)} className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200">
-            {RACES.map((r) => <option key={r}>{r}</option>)}
+          <select
+            value={form.race}
+            onChange={(e) => set("race", e.target.value as Race)}
+            className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200"
+          >
+            {RACES.map((r) => (
+              <option key={r}>{r}</option>
+            ))}
           </select>
-          <select value={form.gender} onChange={(e) => set('gender', e.target.value as Gender)} className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200">
-            <option value="male">Masculino</option>
-            <option value="female">Feminino</option>
+          <select
+            value={form.gender}
+            onChange={(e) => set("gender", e.target.value as Gender)}
+            className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200"
+          >
+            <option value="male">Male</option>
+            <option value="female">Female</option>
           </select>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input value={form.ref_id} onChange={(e) => set('ref_id', e.target.value)} placeholder="Ref ID" className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none" />
-          <input value={form.base_id} onChange={(e) => set('base_id', e.target.value)} placeholder="Base ID" className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none" />
+          <input
+            value={form.ref_id}
+            onChange={(e) => set("ref_id", e.target.value)}
+            placeholder="Ref ID"
+            className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none"
+          />
+          <input
+            value={form.base_id}
+            onChange={(e) => set("base_id", e.target.value)}
+            placeholder="Base ID"
+            className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none"
+          />
         </div>
         <div>
-          <label className="text-xs text-stone-500">Relationship rank: {form.relationship_rank}</label>
-          <input type="range" min={-4} max={4} value={form.relationship_rank} onChange={(e) => set('relationship_rank', Number(e.target.value))} className="w-full mt-1" />
+          <label className="text-xs text-stone-500">
+            Relationship rank: {form.relationship_rank}
+          </label>
+          <input
+            type="range"
+            min={-4}
+            max={4}
+            value={form.relationship_rank}
+            onChange={(e) => set("relationship_rank", Number(e.target.value))}
+            className="w-full mt-1"
+          />
         </div>
         <div className="flex gap-4">
           <label className="flex items-center gap-2 text-sm text-stone-300 cursor-pointer">
-            <input type="checkbox" checked={form.is_follower} onChange={(e) => set('is_follower', e.target.checked)} />
-            Companheiro
+            <input
+              type="checkbox"
+              checked={form.is_follower}
+              onChange={(e) => set("is_follower", e.target.checked)}
+            />
+            Follower
           </label>
           <label className="flex items-center gap-2 text-sm text-stone-300 cursor-pointer">
-            <input type="checkbox" checked={form.is_enemy} onChange={(e) => set('is_enemy', e.target.checked)} />
-            Inimigo
+            <input
+              type="checkbox"
+              checked={form.is_enemy}
+              onChange={(e) => set("is_enemy", e.target.checked)}
+            />
+            Enemy
           </label>
         </div>
         <div className="flex gap-2 mt-1">
-          <button onClick={onCancel} className="flex-1 py-2 text-sm text-stone-400 border border-stone-700 rounded-lg hover:border-stone-500 transition-colors">
-            Cancelar
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 text-sm text-stone-400 border border-stone-700 rounded-lg hover:border-stone-500 transition-colors"
+          >
+            Cancel
           </button>
-          <button onClick={() => form.name && onSave(form)} disabled={!form.name} className="flex-1 py-2 text-sm font-semibold bg-amber-800 hover:bg-amber-700 text-amber-100 rounded-lg transition-colors disabled:opacity-30">
-            Salvar
+          <button
+            onClick={() => form.name && onSave(form)}
+            disabled={!form.name}
+            className="flex-1 py-2 text-sm font-semibold bg-amber-800 hover:bg-amber-700 text-amber-100 rounded-lg transition-colors disabled:opacity-30"
+          >
+            Save
           </button>
         </div>
       </div>

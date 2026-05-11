@@ -1,16 +1,16 @@
 export type Race =
-  | 'Nord'
-  | 'Imperial'
-  | 'Breton'
-  | 'Dunmer'
-  | 'Altmer'
-  | 'Bosmer'
-  | 'Orc'
-  | 'Khajiit'
-  | 'Argonian'
-  | 'Redguard';
+  | "Nord"
+  | "Imperial"
+  | "Breton"
+  | "Dunmer"
+  | "Altmer"
+  | "Bosmer"
+  | "Orc"
+  | "Khajiit"
+  | "Argonian"
+  | "Redguard";
 
-export type Gender = 'male' | 'female';
+export type Gender = "male" | "female";
 
 export interface NPC {
   name: string;
@@ -31,7 +31,6 @@ export interface Player {
   name: string;
   race: Race;
   gender: Gender;
-  location: string;
   in_game_time: string; // "HH:MM"
 }
 
@@ -39,7 +38,6 @@ export interface StartConversationPayload {
   player_name: string;
   player_race: string;
   player_gender: string;
-  location: string;
   in_game_time: string;
   npcs: NPC[];
 }
@@ -58,7 +56,7 @@ export interface StatusResponse {
   status: string;
 }
 
-export type MessageType = 'player' | 'npc' | 'system' | 'error';
+export type MessageType = "player" | "npc" | "system" | "error";
 
 export interface ChatMessage {
   id: string;
@@ -69,7 +67,12 @@ export interface ChatMessage {
   action?: string | null;
 }
 
-export type ConversationState = 'IDLE' | 'CONNECTING' | 'ACTIVE' | 'WAITING' | 'ENDED';
+export type ConversationState =
+  | "IDLE"
+  | "CONNECTING"
+  | "ACTIVE"
+  | "WAITING"
+  | "ENDED";
 
 export interface ConversationLog {
   id: string;
@@ -84,14 +87,13 @@ export interface NPCPreset {
   id: string;
   label: string;
   npc: NPC;
-  suggestedLocation?: string;
 }
 
 // NPCs lidos da pasta de override do Mantella
 export interface OverrideNPC {
   name: string;
   race: string;
-  gender: 'male' | 'female';
+  gender: "male" | "female";
   bio: string;
   voice_model: string;
   ref_id: string;
@@ -110,8 +112,8 @@ export interface OverrideNPCResponse {
 }
 
 // Experiment / questionnaire
-export type AppScreen = 'context' | 'chat' | 'questionnaire' | 'done';
-export type LikertMode = 'range' | 'classic';
+export type AppScreen = "context" | "chat" | "questionnaire" | "done";
+export type LikertMode = "range" | "classic";
 
 export interface QuestionnaireAnswer {
   questionId: string;
