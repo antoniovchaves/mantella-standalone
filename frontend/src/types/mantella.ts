@@ -30,14 +30,16 @@ export interface NPC {
 export interface Player {
   name: string;
   race: Race;
-  gender: Gender;
+  gender: Gender | null; // null = prefer not to answer (gender omitted from payload)
+  location: string;
   in_game_time: string; // "HH:MM"
 }
 
 export interface StartConversationPayload {
   player_name: string;
   player_race: string;
-  player_gender: string;
+  player_gender?: string; // omitted when participant chose "prefer not to answer"
+  location: string;
   in_game_time: string;
   npcs: NPC[];
 }

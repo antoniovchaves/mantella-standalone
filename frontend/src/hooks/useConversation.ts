@@ -56,28 +56,28 @@ export function useConversation() {
       setMessages([]);
       sessionRef.current = { player, npcs };
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         player_name: player.name,
         player_race: player.race,
-        player_gender: player.gender,
         in_game_time: player.in_game_time,
         npcs,
       };
-
-      console.log("PAYLOAD SENT:", JSON.stringify(payload));
+      if (player.gender !== null) payload.player_gender = player.gender;
       setLastRequest(payload);
 
       try {
-        const res = await startConversation(payload);
+        const res = await startConversation(payload) as { greeting?: Array<{ npc_name: string; npc_response: string; action?: string | null }> };
         setLastResponse(res);
-        setState("ACTIVE");
         const npcNames = npcs.map((n) => n.name).join(", ");
-        addMessage(
-          makeMessage(
-            "system",
-            `Conversation started · ${player.in_game_time} with ${npcNames}`,
-          ),
-        );
+        addMessage(makeMessage("system", `Conversation started · ${player.in_game_time} with ${npcNames}`));
+        setState("ACTIVE");
+        const greeting = Array.isArray(res?.greeting) ? res.greeting : [];
+        for (const item of greeting) {
+          if (item.npc_response) {
+            await typingDelay(item.npc_response);
+            addMessage(makeMessage("npc", item.npc_response, item.npc_name, item.action ?? null));
+          }
+        }
       } catch (err) {
         setState("IDLE");
         addMessage(

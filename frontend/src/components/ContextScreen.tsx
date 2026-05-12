@@ -1,13 +1,22 @@
 import { useState } from "react";
+import type { Gender } from "../types/mantella";
 import { EXPERIMENT_CONTEXT, EXPERIMENT_META } from "../data/experiment";
 
 interface Props {
-  onStart: (name: string) => void;
+  onStart: (name: string, gender: Gender | null) => void;
 }
 
 export function ContextScreen({ onStart }: Props) {
   const [name, setName] = useState("");
+  const [gender, setGender] = useState<Gender | "none" | null>(null);
   const paragraphs = EXPERIMENT_CONTEXT.split("\n\n").filter(Boolean);
+
+  const canStart = name.trim() !== "" && gender !== null;
+
+  function handleStart() {
+    if (!canStart) return;
+    onStart(name.trim(), gender === "none" ? null : (gender as Gender));
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-stone-950 px-6 py-12">
@@ -28,7 +37,6 @@ export function ContextScreen({ onStart }: Props) {
         {/* Context card */}
         <div className="bg-stone-900 border border-stone-800 rounded-xl px-8 py-7 flex flex-col gap-4">
           {paragraphs.map((para, i) => {
-            // Lines starting with "•" become a list
             if (para.startsWith("•") || para.includes("\n•")) {
               const lines = para.split("\n").filter(Boolean);
               const title = lines[0].startsWith("•") ? null : lines[0];
@@ -58,8 +66,6 @@ export function ContextScreen({ onStart }: Props) {
                 </div>
               );
             }
-
-            // First paragraph highlighted
             if (i === 0) {
               return (
                 <p
@@ -70,7 +76,6 @@ export function ContextScreen({ onStart }: Props) {
                 </p>
               );
             }
-
             return (
               <p key={i} className="text-sm text-stone-400 leading-relaxed">
                 {para}
@@ -87,7 +92,7 @@ export function ContextScreen({ onStart }: Props) {
           <p className="text-xs text-stone-500 leading-relaxed">
             At the end of the conversation, you will answer{" "}
             <span className="text-stone-400">an evaluation questionnaire</span>{" "}
-            on a scale of 1 to {EXPERIMENT_META.scaleMax}.
+            on a scale from 1 to {EXPERIMENT_META.scaleMax}.
           </p>
         </div>
 
@@ -101,7 +106,7 @@ export function ContextScreen({ onStart }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && name.trim()) onStart(name.trim());
+              if (e.key === "Enter" && canStart) handleStart();
             }}
             placeholder="Your name"
             className="w-full bg-stone-900 border border-stone-700 rounded-xl px-4 py-3 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 transition-colors"
@@ -109,13 +114,42 @@ export function ContextScreen({ onStart }: Props) {
           />
         </div>
 
+        {/* Gender selection */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-stone-400 font-medium">
+            How do you identify?
+          </label>
+          <div className="flex gap-2">
+            {(
+              [
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "none", label: "Prefer not to answer" },
+              ] as const
+            ).map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setGender(value)}
+                className={`flex-1 py-2.5 text-sm rounded-xl border transition-all duration-100 ${
+                  gender === value
+                    ? "bg-amber-800 border-amber-700 text-amber-100 font-semibold"
+                    : "bg-stone-900 border-stone-700 text-stone-400 hover:border-stone-500 hover:text-stone-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* CTA */}
         <button
-          onClick={() => onStart(name.trim())}
-          disabled={!name.trim()}
+          onClick={handleStart}
+          disabled={!canStart}
           className="w-full py-4 bg-amber-800 hover:bg-amber-700 active:scale-[0.98] text-amber-100 font-semibold text-base rounded-xl transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
         >
-          I understand — start experiment
+          Understood — start experiment
         </button>
 
         <p className="text-center text-xs text-stone-700">

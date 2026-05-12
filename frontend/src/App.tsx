@@ -5,6 +5,7 @@ import type {
   NPC,
   AppScreen,
   ExperimentResult,
+  Gender,
 } from "./types/mantella";
 import { useConversation } from "./hooks/useConversation";
 import { CharacterConfig } from "./components/CharacterConfig";
@@ -34,6 +35,7 @@ export default function App() {
     name: "Dovahkiin",
     race: "Nord",
     gender: "male",
+    location: "American Diner",
     in_game_time: "20:00",
   });
   const [currentNpcs, setCurrentNpcs] = useState<NPC[]>([]);
@@ -44,6 +46,7 @@ export default function App() {
   const startedAtRef = useRef<string>(new Date().toISOString());
   const chatStartedAtRef = useRef<Date | null>(null);
   const participantNameRef = useRef<string>("");
+  const participantGenderRef = useRef<Gender | null>(null);
 
   useEffect(() => {
     ping();
@@ -68,9 +71,10 @@ export default function App() {
     document.exitFullscreen();
   }
 
-  function handleContextDone(name: string) {
+  function handleContextDone(name: string, gender: Gender | null) {
     participantNameRef.current = name;
-    setCurrentPlayer((p) => ({ ...p, name }));
+    participantGenderRef.current = gender;
+    setCurrentPlayer((p) => ({ ...p, name, gender }));
     setScreen("chat");
   }
 
@@ -78,6 +82,7 @@ export default function App() {
     const namedPlayer = {
       ...player,
       name: participantNameRef.current || player.name,
+      gender: participantGenderRef.current,
     };
     setCurrentPlayer(namedPlayer);
     setCurrentNpcs(npcs);
@@ -210,7 +215,7 @@ export default function App() {
         </main>
 
         {!isFullscreen && (
-          <aside className="w-52 flex-shrink-0 border-l border-stone-800 bg-stone-950 overflow-hidden flex flex-col">
+          <aside className="flex-shrink-0 border-l border-stone-800 bg-stone-950 overflow-hidden flex flex-col">
             <DebugPanel lastRequest={lastRequest} lastResponse={lastResponse} />
           </aside>
         )}

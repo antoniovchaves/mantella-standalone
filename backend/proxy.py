@@ -1,14 +1,14 @@
 """
 Mantella Standalone — Backend Proxy
-Porta padrão: 8080
-Redireciona chamadas do frontend para o Mantella (localhost:4999)
-Também lê os arquivos de override de personagens do Mantella
+Default port: 8080
+Forwards frontend calls to Mantella (localhost:4999) and reads NPC override files.
 """
 
 import os
 import re
 import json
 import csv
+import random
 import httpx
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
@@ -20,11 +20,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 MANTELLA_BASE = "http://localhost:4999"
-TIMEOUT_SHORT = 15.0   # para chamadas rápidas (start, end, init)
-TIMEOUT_LLM   = 120.0  # para continue_conversation (aguarda o LLM)
+TIMEOUT_SHORT = 15.0   # fast calls (start, end, init)
+TIMEOUT_LLM   = 120.0  # continue_conversation (waits for LLM)
 
 DEFAULT_OVERRIDE_PATH = Path.home() / "Documents" / "My Games" / "Mantella" / "data" / "Skyrim" / "character_overrides"
 OVERRIDE_PATH = Path(os.environ.get("MANTELLA_OVERRIDE_PATH", str(DEFAULT_OVERRIDE_PATH)))
+
+STOP_REPLY_TYPES = {"mantella_player_talk", "mantella_end_conversation", "error"}
+MAX_SENTENCES = 10
+
+GENDER_MAP = {"male": 0, "female": 1}
+
+_SPEECH_SPLIT_RE = re.compile(r'\n(?=[A-Z][a-zA-Z\s]+:\s)')
+_SPEAKER_PREFIX_RE = re.compile(r'^([A-Z][a-zA-Z\s]+):\s+(.*)', re.DOTALL)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 app = FastAPI(title="Mantella Standalone Proxy", version="1.0.0")
 
@@ -36,11 +49,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GENDER_MAP = {"male": 0, "female": 1}
-
 
 def _hex_to_int(value: str) -> int:
-    """Converte ref_id/base_id de hex string para int."""
     try:
         if isinstance(value, int):
             return value
@@ -52,12 +62,7 @@ def _hex_to_int(value: str) -> int:
         return 0
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 async def _post_mantella(body: dict, timeout: float = TIMEOUT_SHORT) -> dict:
-    """Envia POST /mantella e retorna o JSON de resposta como dict."""
     url = f"{MANTELLA_BASE}/mantella"
     log.info(f">> POST {url} | type={body.get('mantella_request_type')}")
     try:
@@ -69,26 +74,12 @@ async def _post_mantella(body: dict, timeout: float = TIMEOUT_SHORT) -> dict:
         except Exception:
             return {"raw": resp.text}
     except httpx.ConnectError:
-        raise HTTPException(503, "Mantella não está acessível em localhost:4999. Verifique se o mod está rodando.")
+        raise HTTPException(503, "Mantella is not reachable at localhost:4999. Make sure the mod is running.")
     except httpx.TimeoutException:
-        raise HTTPException(504, f"Timeout após {timeout}s aguardando o Mantella.")
+        raise HTTPException(504, f"Timeout after {timeout}s waiting for Mantella.")
     except Exception as exc:
-        log.exception("Erro inesperado ao contatar o Mantella")
+        log.exception("Unexpected error contacting Mantella")
         raise HTTPException(500, str(exc))
-
-
-def _extract_npc_response(mantella_data: dict) -> dict:
-    """Traduz a resposta do Mantella para o formato que o frontend espera."""
-    npc_talk = mantella_data.get("mantella_npc_talk", {})
-    actions = npc_talk.get("mantella_actor_actions", []) if npc_talk else []
-    action_ids = [a.get("identifier") for a in actions if isinstance(a, dict) and a.get("identifier")]
-    return {
-        "npc_name": npc_talk.get("mantella_actor_speaker", "") if npc_talk else "",
-        "npc_response": npc_talk.get("mantella_actor_line_to_speak", "") if npc_talk else "",
-        "action": action_ids[0] if action_ids else None,
-        "reply_type": mantella_data.get("mantella_reply_type", ""),
-        "_raw": mantella_data,
-    }
 
 
 def _build_actor(name: str, race: str, gender: str, is_player: bool,
@@ -107,6 +98,73 @@ def _build_actor(name: str, race: str, gender: str, is_player: bool,
         "mantella_actor_customvalues": {},
         "mantella_equipment": {},
     }
+
+
+def _split_speech(speaker: str, text: str, actions: list) -> list[dict]:
+    """Split a single line_to_speak that may contain multiple 'Name: text' segments."""
+    parts = _SPEECH_SPLIT_RE.split(text)
+    result = []
+    for i, part in enumerate(parts):
+        m = _SPEAKER_PREFIX_RE.match(part)
+        if m:
+            result.append({"speaker": m.group(1).strip(), "text": m.group(2).strip(), "actions": actions if i == 0 else []})
+        else:
+            result.append({"speaker": speaker, "text": part.strip(), "actions": actions if i == 0 else []})
+    return [s for s in result if s["text"]]
+
+
+def _clean_speech(text: str) -> str:
+    """Remove action markers and normalize whitespace from NPC speech."""
+    text = re.sub(r'\*[^*]+\*', '', text)
+    text = re.sub(r' +', ' ', text).strip()
+    if (text.startswith('"') and text.endswith('"')) or \
+       (text.startswith("'") and text.endswith("'")):
+        text = text[1:-1].strip()
+    return re.sub(r' +', ' ', text).strip()
+
+
+def _collect_npc_sentences(sentences: list[dict]) -> list[dict]:
+    """Convert raw sentence dicts into the frontend-ready response format."""
+    result = []
+    for s in sentences:
+        cleaned = _clean_speech(s["text"])
+        if not cleaned:
+            continue
+        actions = [a.get("identifier") for a in s["actions"] if isinstance(a, dict) and a.get("identifier")]
+        result.append({
+            "npc_name": s["speaker"],
+            "npc_response": cleaned,
+            "action": actions[0] if actions else None,
+        })
+    return result
+
+
+async def _continue_loop(label: str) -> list[dict]:
+    """Run the continue_conversation loop and return collected sentences."""
+    sentences: list[dict] = []
+    for i in range(MAX_SENTENCES):
+        continue_data = await _post_mantella({
+            "mantella_request_type": "mantella_continue_conversation",
+            "mantella_topicinfofile": 1,
+            "mantella_context": {},
+        }, timeout=TIMEOUT_LLM)
+
+        reply_type = continue_data.get("mantella_reply_type", "")
+        log.info(f"{label} [{i+1}] reply_type: {reply_type}")
+
+        npc_talk = continue_data.get("mantella_npc_talk")
+        if npc_talk and npc_talk.get("mantella_actor_line_to_speak"):
+            sentences.extend(_split_speech(
+                speaker=npc_talk.get("mantella_actor_speaker", ""),
+                text=npc_talk.get("mantella_actor_line_to_speak", ""),
+                actions=npc_talk.get("mantella_actor_actions", []),
+            ))
+
+        if reply_type in STOP_REPLY_TYPES:
+            break
+        if reply_type == "mantella_npc_talk" and not npc_talk:
+            break
+    return sentences
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +186,6 @@ async def health():
 async def start_conversation(request: Request):
     body = await request.json()
 
-    # Traduza o formato do frontend para o formato do Mantella
     actors = []
 
     # Player
@@ -142,14 +199,15 @@ async def start_conversation(request: Request):
         relationship_rank=4,
     ))
 
-    # NPCs
+    # NPCs — random ref_id per session so Mantella never loads previous context
     for npc in body.get("npcs", []):
+        session_ref_id = hex(random.randint(0x100000, 0xEFFFFF))
         actors.append(_build_actor(
             name=npc.get("name", ""),
             race=npc.get("race", "Nord"),
             gender=npc.get("gender", "male"),
             is_player=False,
-            ref_id=npc.get("ref_id", "0x000198C5"),
+            ref_id=session_ref_id,
             base_id=npc.get("base_id", "0x000198C4"),
             voice_type=npc.get("voice_type", ""),
             is_in_combat=npc.get("is_in_combat", False),
@@ -157,14 +215,13 @@ async def start_conversation(request: Request):
             relationship_rank=npc.get("relationship_rank", 0),
         ))
 
-    # Converte "HH:MM" → hora inteira
     time_str = body.get("in_game_time", "12:00")
     try:
         hour = int(time_str.split(":")[0])
     except Exception:
         hour = 12
 
-    mantella_body = {
+    await _post_mantella({
         "mantella_request_type": "mantella_start_conversation",
         "mantella_input_type": "mantella_text_input",
         "mantella_actors": actors,
@@ -175,50 +232,24 @@ async def start_conversation(request: Request):
             "mantella_ingame_events": [],
             "mantella_nearby_actors": [],
         },
-    }
+    })
 
-    data = await _post_mantella(mantella_body)
-    return JSONResponse(data)
+    # Collect the opening NPC greeting; if Mantella isn't ready for continue yet, return empty
+    greeting = []
+    try:
+        sentences = await _continue_loop("greeting")
+        greeting = _collect_npc_sentences(sentences)
+    except Exception as e:
+        log.warning(f"Could not collect opening greeting: {e}")
 
+    return JSONResponse({"greeting": greeting})
 
-STOP_REPLY_TYPES = {"mantella_player_talk", "mantella_end_conversation", "error"}
-
-_SPEECH_SPLIT_RE = re.compile(r'\n(?=[A-Z][a-zA-Z\s]+:\s)')
-_SPEAKER_PREFIX_RE = re.compile(r'^([A-Z][a-zA-Z\s]+):\s+(.*)', re.DOTALL)
-
-def _split_speech(speaker: str, text: str, actions: list) -> list[dict]:
-    """Split a single line_to_speak that may contain multiple 'Name: text' segments."""
-    parts = _SPEECH_SPLIT_RE.split(text)
-    result = []
-    for i, part in enumerate(parts):
-        m = _SPEAKER_PREFIX_RE.match(part)
-        if m:
-            result.append({"speaker": m.group(1).strip(), "text": m.group(2).strip(), "actions": actions if i == 0 else []})
-        else:
-            result.append({"speaker": speaker, "text": part.strip(), "actions": actions if i == 0 else []})
-    return [s for s in result if s["text"]]
-
-
-def _clean_speech(text: str) -> str:
-    """Remove action markers and normalize whitespace from NPC speech."""
-    # 1. Remove *action descriptions*
-    text = re.sub(r'\*[^*]+\*', '', text)
-    # 2. Collapse extra spaces created by removal
-    text = re.sub(r' +', ' ', text).strip()
-    # 3. Strip surrounding quotes only when the entire message is wrapped
-    if (text.startswith('"') and text.endswith('"')) or \
-       (text.startswith("'") and text.endswith("'")):
-        text = text[1:-1].strip()
-    # 4. Final whitespace pass
-    text = re.sub(r' +', ' ', text).strip()
-    return text
 
 @app.post("/player_input")
 async def player_input(request: Request):
     body = await request.json()
     transcript = body.get("transcript", "")
 
-    # Passo 1: envia o texto do jogador
     input_data = await _post_mantella({
         "mantella_request_type": "mantella_player_input",
         "mantella_player_input": transcript,
@@ -226,50 +257,9 @@ async def player_input(request: Request):
     })
     log.info(f"player_input reply_type: {input_data.get('mantella_reply_type')}")
 
-    # Passo 2: loop de continue_conversation — coleta todas as falas do turno
-    # Cada chamada retorna uma fala; paramos quando o Mantella pede a vez do jogador
-    sentences: list[dict] = []
-    MAX_SENTENCES = 10
+    sentences = await _continue_loop("continue")
+    result = _collect_npc_sentences(sentences)
 
-    for i in range(MAX_SENTENCES):
-        continue_data = await _post_mantella({
-            "mantella_request_type": "mantella_continue_conversation",
-            "mantella_topicinfofile": 1,
-            "mantella_context": {},
-        }, timeout=TIMEOUT_LLM)
-
-        reply_type = continue_data.get("mantella_reply_type", "")
-        log.info(f"continue [{i+1}] reply_type: {reply_type} | raw: {json.dumps(continue_data)}")
-
-        npc_talk = continue_data.get("mantella_npc_talk")
-        if npc_talk and npc_talk.get("mantella_actor_line_to_speak"):
-            sentences.extend(_split_speech(
-                speaker=npc_talk.get("mantella_actor_speaker", ""),
-                text=npc_talk.get("mantella_actor_line_to_speak", ""),
-                actions=npc_talk.get("mantella_actor_actions", []),
-            ))
-
-        if reply_type in STOP_REPLY_TYPES:
-            break
-        # mantella_npc_talk sem conteúdo = mantella aguardando jogador
-        if reply_type == "mantella_npc_talk" and not npc_talk:
-            break
-
-    if not sentences:
-        return JSONResponse([{"npc_name": "", "npc_response": "", "action": None}])
-
-    # Retorna sempre uma lista — o frontend adiciona cada item como mensagem separada
-    result = []
-    for s in sentences:
-        cleaned = _clean_speech(s["text"])
-        if not cleaned:
-            continue
-        actions = [a.get("identifier") for a in s["actions"] if isinstance(a, dict) and a.get("identifier")]
-        result.append({
-            "npc_name": s["speaker"],
-            "npc_response": cleaned,
-            "action": actions[0] if actions else None,
-        })
     if not result:
         return JSONResponse([{"npc_name": "", "npc_response": "", "action": None}])
     return JSONResponse(result)
@@ -300,7 +290,7 @@ def parse_override_json(file_path: Path) -> list[dict]:
         if isinstance(data, dict):
             return [data]
     except Exception as e:
-        log.warning(f"Erro ao ler JSON {file_path}: {e}")
+        log.warning(f"Failed to read JSON {file_path}: {e}")
     return []
 
 
@@ -310,13 +300,13 @@ def parse_override_csv(file_path: Path) -> list[dict]:
             reader = csv.DictReader(f)
             return [row for row in reader if row.get("name", "").strip()]
     except Exception as e:
-        log.warning(f"Erro ao ler CSV {file_path}: {e}")
+        log.warning(f"Failed to read CSV {file_path}: {e}")
     return []
 
 
 def load_all_overrides(folder: Path) -> list[dict]:
     if not folder.exists():
-        log.info(f"Pasta de overrides não encontrada: {folder}")
+        log.info(f"Override folder not found: {folder}")
         return []
     npcs = []
     for json_file in sorted(folder.glob("*.json")):
@@ -368,12 +358,12 @@ async def set_override_path(request: Request):
     body = await request.json()
     new_path = body.get("path", "").strip()
     if not new_path:
-        raise HTTPException(status_code=400, detail="Campo 'path' é obrigatório.")
+        raise HTTPException(status_code=400, detail="Field 'path' is required.")
     OVERRIDE_PATH = Path(new_path)
     return {"path": str(OVERRIDE_PATH), "exists": OVERRIDE_PATH.exists()}
 
 
 if __name__ == "__main__":
     import uvicorn
-    log.info(f"Pasta de overrides configurada: {OVERRIDE_PATH}")
+    log.info(f"Override folder: {OVERRIDE_PATH}")
     uvicorn.run("proxy:app", host="0.0.0.0", port=8080, reload=True, log_level="info")

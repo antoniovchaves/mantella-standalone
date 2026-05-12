@@ -36,6 +36,7 @@ const DEFAULT_PLAYER: Player = {
   name: "Dovahkiin",
   race: "Nord",
   gender: "male",
+  location: "American Diner",
   in_game_time: "20:00",
 };
 
@@ -144,16 +145,24 @@ export function CharacterConfig({
               </select>
               <select
                 disabled={isActive}
-                value={player.gender}
+                value={player.gender ?? ""}
                 onChange={(e) =>
-                  updatePlayer("gender", e.target.value as Gender)
+                  updatePlayer("gender", (e.target.value as Gender) || null)
                 }
                 className="bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-700 disabled:opacity-40"
               >
                 <option value="male">Male</option>
                 <option value="female">Female</option>
+                <option value="">—</option>
               </select>
             </div>
+            <input
+              disabled={isActive}
+              value={player.location ?? ""}
+              onChange={(e) => updatePlayer("location", e.target.value)}
+              placeholder="Location"
+              className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 disabled:opacity-40"
+            />
             <input
               disabled={isActive}
               value={player.in_game_time}
