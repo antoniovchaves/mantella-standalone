@@ -11,6 +11,13 @@ export interface LikertQuestion {
 }
 
 // -----------------------------------------------------------------------------
+// CHAT BANNER
+// Shown as a collapsible panel at the top of the chat screen.
+// Remind the participant of where they are and what is happening.
+// -----------------------------------------------------------------------------
+export const EXPERIMENT_CHAT_BANNER = `[Placeholder — the researcher will provide this text. It will describe the scenario: the diner, the levers, what the participant must do.]`;
+
+// -----------------------------------------------------------------------------
 // CONTEXT TEXT
 // Shown to the participant before starting any conversation.
 // Supports line breaks with \n\n for paragraphs.
