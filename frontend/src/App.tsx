@@ -41,7 +41,6 @@ export default function App() {
   const [currentNpcs, setCurrentNpcs] = useState<NPC[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const appRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string>(uuidv4());
   const startedAtRef = useRef<string>(new Date().toISOString());
   const chatStartedAtRef = useRef<Date | null>(null);
@@ -54,21 +53,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, [ping]);
 
-  useEffect(() => {
-    function onFullscreenChange() {
-      setIsFullscreen(!!document.fullscreenElement);
-    }
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
-
   function enterFullscreen() {
-    appRef.current?.requestFullscreen();
+    setIsFullscreen(true);
   }
 
   function exitFullscreen() {
-    document.exitFullscreen();
+    setIsFullscreen(false);
   }
 
   function handleContextDone(name: string, gender: Gender | null) {
@@ -92,7 +82,7 @@ export default function App() {
 
   async function handleFinishExperiment() {
     await end();
-    if (isFullscreen) document.exitFullscreen();
+    setIsFullscreen(false);
     setScreen("questionnaire");
   }
 
@@ -150,10 +140,7 @@ export default function App() {
     state === "ACTIVE" || state === "WAITING" || state === "CONNECTING";
 
   return (
-    <div
-      ref={appRef}
-      className="flex flex-col h-screen bg-stone-950 text-stone-200 font-sans overflow-hidden"
-    >
+    <div className="flex flex-col h-screen bg-stone-950 text-stone-200 font-sans overflow-hidden">
       {!isFullscreen && (
         <StatusBar
           state={state}

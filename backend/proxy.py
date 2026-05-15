@@ -9,6 +9,7 @@ import re
 import json
 import csv
 import random
+import asyncio
 import httpx
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
@@ -30,6 +31,8 @@ STOP_REPLY_TYPES = {"mantella_player_talk", "mantella_end_conversation", "error"
 MAX_SENTENCES = 10
 
 GENDER_MAP = {"male": 0, "female": 1}
+
+_mantella_lock = asyncio.Lock()
 
 _SPEECH_SPLIT_RE = re.compile(r'\n(?=[A-Z][a-zA-Z\s]+:\s)')
 _SPEAKER_PREFIX_RE = re.compile(r'^([A-Z][a-zA-Z\s]+):\s+(.*)', re.DOTALL)
@@ -65,21 +68,25 @@ def _hex_to_int(value: str) -> int:
 async def _post_mantella(body: dict, timeout: float = TIMEOUT_SHORT) -> dict:
     url = f"{MANTELLA_BASE}/mantella"
     log.info(f">> POST {url} | type={body.get('mantella_request_type')}")
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, json=body)
-        log.info(f"<< {resp.status_code}")
+    async with _mantella_lock:
         try:
-            return resp.json()
-        except Exception:
-            return {"raw": resp.text}
-    except httpx.ConnectError:
-        raise HTTPException(503, "Mantella is not reachable at localhost:4999. Make sure the mod is running.")
-    except httpx.TimeoutException:
-        raise HTTPException(504, f"Timeout after {timeout}s waiting for Mantella.")
-    except Exception as exc:
-        log.exception("Unexpected error contacting Mantella")
-        raise HTTPException(500, str(exc))
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(url, json=body)
+            log.info(f"<< {resp.status_code}")
+            try:
+                data = resp.json()
+                log.info(f"<< body: {json.dumps(data, ensure_ascii=False)}")
+                return data
+            except Exception:
+                log.info(f"<< raw text: {resp.text}")
+                return {"raw": resp.text}
+        except httpx.ConnectError:
+            raise HTTPException(503, "Mantella is not reachable at localhost:4999. Make sure the mod is running.")
+        except httpx.TimeoutException:
+            raise HTTPException(504, f"Timeout after {timeout}s waiting for Mantella.")
+        except Exception as exc:
+            log.exception("Unexpected error contacting Mantella")
+            raise HTTPException(500, str(exc))
 
 
 def _build_actor(name: str, race: str, gender: str, is_player: bool,
@@ -124,11 +131,13 @@ def _clean_speech(text: str) -> str:
 
 
 def _collect_npc_sentences(sentences: list[dict]) -> list[dict]:
-    """Convert raw sentence dicts into the frontend-ready response format."""
+    """Clean each sentence and return individually; skip empty/single-word fragments."""
     result = []
     for s in sentences:
         cleaned = _clean_speech(s["text"])
         if not cleaned:
+            continue
+        if " " not in cleaned and cleaned[-1] not in ".!?":
             continue
         actions = [a.get("identifier") for a in s["actions"] if isinstance(a, dict) and a.get("identifier")]
         result.append({
@@ -150,13 +159,14 @@ async def _continue_loop(label: str) -> list[dict]:
         }, timeout=TIMEOUT_LLM)
 
         reply_type = continue_data.get("mantella_reply_type", "")
-        log.info(f"{label} [{i+1}] reply_type: {reply_type}")
-
         npc_talk = continue_data.get("mantella_npc_talk")
-        if npc_talk and npc_talk.get("mantella_actor_line_to_speak"):
+        raw_line = npc_talk.get("mantella_actor_line_to_speak", "") if npc_talk else ""
+        log.info(f"{label} [{i+1}] reply_type={reply_type!r} | line={raw_line!r}")
+
+        if npc_talk and raw_line:
             sentences.extend(_split_speech(
                 speaker=npc_talk.get("mantella_actor_speaker", ""),
-                text=npc_talk.get("mantella_actor_line_to_speak", ""),
+                text=raw_line,
                 actions=npc_talk.get("mantella_actor_actions", []),
             ))
 

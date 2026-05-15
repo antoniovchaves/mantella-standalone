@@ -35,53 +35,67 @@ export function ContextScreen({ onStart }: Props) {
         </div>
 
         {/* Context card */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl px-8 py-7 flex flex-col gap-4">
-          {paragraphs.map((para, i) => {
-            if (para.startsWith("•") || para.includes("\n•")) {
-              const lines = para.split("\n").filter(Boolean);
-              const title = lines[0].startsWith("•") ? null : lines[0];
-              const items = lines
-                .filter((l) => l.startsWith("•"))
-                .map((l) => l.replace("•", "").trim());
+        <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden flex flex-col gap-4">
+          {/* Diner image */}
+          <div className="w-full">
+            <img
+              src="/diner.jpg"
+              alt="American diner"
+              className="w-full h-52 object-cover object-center"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+
+          <div className="px-8 pb-7 flex flex-col gap-4">
+            {paragraphs.map((para, i) => {
+              if (para.startsWith("•") || para.includes("\n•")) {
+                const lines = para.split("\n").filter(Boolean);
+                const title = lines[0].startsWith("•") ? null : lines[0];
+                const items = lines
+                  .filter((l) => l.startsWith("•"))
+                  .map((l) => l.replace("•", "").trim());
+                return (
+                  <div key={i}>
+                    {title && (
+                      <p className="text-sm font-semibold text-stone-300 mb-2">
+                        {title}
+                      </p>
+                    )}
+                    <ul className="flex flex-col gap-1.5">
+                      {items.map((item, j) => (
+                        <li
+                          key={j}
+                          className="flex gap-2 text-sm text-stone-400 leading-relaxed"
+                        >
+                          <span className="text-amber-700 mt-0.5 flex-shrink-0">
+                            ▸
+                          </span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (i === 0) {
+                return (
+                  <p
+                    key={i}
+                    className="text-base text-stone-200 leading-relaxed font-medium"
+                  >
+                    {para}
+                  </p>
+                );
+              }
               return (
-                <div key={i}>
-                  {title && (
-                    <p className="text-sm font-semibold text-stone-300 mb-2">
-                      {title}
-                    </p>
-                  )}
-                  <ul className="flex flex-col gap-1.5">
-                    {items.map((item, j) => (
-                      <li
-                        key={j}
-                        className="flex gap-2 text-sm text-stone-400 leading-relaxed"
-                      >
-                        <span className="text-amber-700 mt-0.5 flex-shrink-0">
-                          ▸
-                        </span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            }
-            if (i === 0) {
-              return (
-                <p
-                  key={i}
-                  className="text-base text-stone-200 leading-relaxed font-medium"
-                >
+                <p key={i} className="text-sm text-stone-400 leading-relaxed">
                   {para}
                 </p>
               );
-            }
-            return (
-              <p key={i} className="text-sm text-stone-400 leading-relaxed">
-                {para}
-              </p>
-            );
-          })}
+            })}
+          </div>
         </div>
 
         {/* Scale info */}
