@@ -20,6 +20,7 @@ export function ChatWindow({
 }: Props) {
   const [input, setInput] = useState("");
   const [bannerExpanded, setBannerExpanded] = useState(true);
+  const [dinerImageOpen, setDinerImageOpen] = useState(false);
   const [leverOpen, setLeverOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -67,7 +68,6 @@ export function ChatWindow({
 
   return (
     <div className="flex flex-col h-full">
-
       {/* Scenario banner */}
       <div className="border-b border-stone-800 bg-stone-900/60">
         <button
@@ -82,10 +82,38 @@ export function ChatWindow({
           </span>
         </button>
         {bannerExpanded && (
-          <div className="px-4 pb-3">
-            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-line">
-              {EXPERIMENT_CHAT_BANNER}
-            </p>
+          <div className="flex flex-col">
+            <div className="px-4 pb-3">
+              <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-line">
+                {EXPERIMENT_CHAT_BANNER}
+              </p>
+            </div>
+            {/* Diner image toggle — bottom of banner */}
+            <div className="border-t border-stone-800/60">
+              <button
+                type="button"
+                onClick={() => setDinerImageOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-stone-800/40 transition-colors"
+              >
+                <span className="text-[10px] font-semibold text-amber-700/70 uppercase tracking-widest">
+                  The diner
+                </span>
+                <span className="text-stone-600 text-[10px]">
+                  {dinerImageOpen ? "▲ hide" : "▼ show"}
+                </span>
+              </button>
+              {dinerImageOpen && (
+                <img
+                  src="/diner.jpg"
+                  alt="American diner"
+                  className="w-full max-h-48 object-cover object-center"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display =
+                      "none";
+                  }}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -143,7 +171,9 @@ export function ChatWindow({
                   >
                     <span>⚙</span>
                     Pull a lever
-                    <span className="text-red-500">{leverOpen ? "▲" : "▼"}</span>
+                    <span className="text-red-500">
+                      {leverOpen ? "▲" : "▼"}
+                    </span>
                   </button>
 
                   {leverOpen && (
@@ -207,7 +237,11 @@ export function ChatWindow({
             {isActive && "Shift+Enter for new line"}
           </span>
           <span className="text-[10px] text-stone-700">
-            {messages.filter((m) => m.type === "player" || m.type === "npc").length} messages
+            {
+              messages.filter((m) => m.type === "player" || m.type === "npc")
+                .length
+            }{" "}
+            messages
           </span>
         </div>
       </div>

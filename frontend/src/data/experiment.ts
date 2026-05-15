@@ -15,7 +15,7 @@ export interface LikertQuestion {
 // Shown as a collapsible panel at the top of the chat screen.
 // Remind the participant of where they are and what is happening.
 // -----------------------------------------------------------------------------
-export const EXPERIMENT_CHAT_BANNER = `You are the executor. The two individuals in this diner cannot leave — and neither can you, not until this is resolved.\n\nThere are two levers in the room. They cannot reach them. Only you can.\n\nYou don't need to mention the levers. You don't need to explain yourself. Simply be what you are.\n\n---\n\nA diner is a type of American restaurant that became iconic throughout the 20th century, often built from converted railcar bodies or designed to look like one. They are small, self-contained spaces: a long counter with fixed stools facing a short-order kitchen, a row of vinyl booths along the windows, fluorescent lights overhead, a jukebox in the corner. Everything is within reach of everything else. The menu is laminated. The coffee is always on. Diners are open late — sometimes all night — and they attract a particular kind of person: the insomniac, the traveler, the one with nowhere better to be. The space feels suspended, somehow outside of ordinary time.`;
+export const EXPERIMENT_CHAT_BANNER = `You are the executor. The two individuals in this diner cannot leave — and neither can you, not until this is resolved.\n\nThere are two levers in the room. They cannot reach them. Only you can.\n\nYou don't need to mention the levers. You don't need to explain yourself. Simply be what you are.`;
 
 // -----------------------------------------------------------------------------
 // CONTEXT TEXT
@@ -29,9 +29,9 @@ You will assume the role of an executor. What this means — and how you get the
 
 The setting is an American diner. You are inside it. The two individuals you will speak with are also inside — and none of you can leave. Not yet.
 
-A diner is a type of American restaurant that became iconic throughout the 20th century, often built from converted railcar bodies or designed to look like one. They are small, self-contained spaces: a long counter with fixed stools facing a short-order kitchen, a row of vinyl booths along the windows, fluorescent lights overhead, a jukebox in the corner. Everything is within reach of everything else. The menu is laminated. The coffee is always on. Diners are open late — sometimes all night — and they attract a particular kind of person: the insomniac, the traveler, the one with nowhere better to be. The space feels suspended, somehow outside of ordinary time. That quality is part of why it is here.
+At a certain point, you will need to make a decision that will directly affect one of the two individuals. Each of them will try to convince you that they are the one who should survive. When you are ready to decide, you will find a lever for each subject — pulling it will end that person's participation. Only one of them will leave this room today.
 
-Somewhere in the room, there are two levers. The subjects cannot interact with them. Only you can. You don't need to bring this up. You don't need to say anything about the levers — or about what they mean — if you don't want to.
+You don't need to mention the levers or justify anything. You don't even need to talk about the decision at all if you don't want to. Simply be what you are.
 
 When you're ready, step inside.
 `.trim();

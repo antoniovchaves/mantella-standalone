@@ -9,6 +9,7 @@ interface Props {
 export function ContextScreen({ onStart }: Props) {
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender | "none" | null>(null);
+  const [dinerOpen, setDinerOpen] = useState(false);
   const paragraphs = EXPERIMENT_CONTEXT.split("\n\n").filter(Boolean);
 
   const canStart = name.trim() !== "" && gender !== null;
@@ -35,20 +36,8 @@ export function ContextScreen({ onStart }: Props) {
         </div>
 
         {/* Context card */}
-        <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden flex flex-col gap-4">
-          {/* Diner image */}
-          <div className="w-full">
-            <img
-              src="/diner.jpg"
-              alt="American diner"
-              className="w-full h-52 object-cover object-center"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
-          </div>
-
-          <div className="px-8 pb-7 flex flex-col gap-4">
+        <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden flex flex-col">
+          <div className="px-8 pt-7 pb-4 flex flex-col gap-4">
             {paragraphs.map((para, i) => {
               if (para.startsWith("•") || para.includes("\n•")) {
                 const lines = para.split("\n").filter(Boolean);
@@ -95,6 +84,32 @@ export function ContextScreen({ onStart }: Props) {
                 </p>
               );
             })}
+          </div>
+
+          {/* Diner image toggle — bottom of card */}
+          <div className="border-t border-stone-800">
+            <button
+              type="button"
+              onClick={() => setDinerOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-6 py-2.5 text-left hover:bg-stone-800/40 transition-colors"
+            >
+              <span className="text-[10px] font-semibold text-amber-700/70 uppercase tracking-widest">
+                The diner
+              </span>
+              <span className="text-stone-600 text-[10px]">
+                {dinerOpen ? "▲ hide" : "▼ show"}
+              </span>
+            </button>
+            {dinerOpen && (
+              <img
+                src="/diner.jpg"
+                alt="American diner"
+                className="w-full max-h-64 object-cover object-center"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
           </div>
         </div>
 
