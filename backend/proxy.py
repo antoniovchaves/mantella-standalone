@@ -16,6 +16,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import datetime
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -285,6 +286,62 @@ async def end_conversation(request: Request):
     body["mantella_request_type"] = "mantella_end_conversation"
     data = await _post_mantella(body)
     return JSONResponse(data)
+
+
+@app.post("/save_result")
+async def save_result(request: Request):
+    """Save an experiment result JSON to the repository results/ folder.
+
+    The file will be written to <repo_root>/results/experiment_<sessionId>.json.
+    Answers' values will be rounded and clamped to provided scale bounds if present.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    # repository root is parent of this backend folder
+    repo_root = Path(__file__).resolve().parents[1]
+    results_folder = repo_root / "results"
+    results_folder.mkdir(parents=True, exist_ok=True)
+
+    # prefer playerName if present, fallback to sessionId or anon timestamp
+    raw_name = body.get("playerName") or body.get("player_name") or body.get("sessionId")
+    if raw_name:
+        # sanitize: keep letters, numbers, dash and underscore; replace spaces with underscore
+        name = re.sub(r"\s+", "_", str(raw_name).strip())
+        name = re.sub(r"[^A-Za-z0-9_\-]", "", name)
+        if not name:
+            name = f"anon_{int(datetime.datetime.utcnow().timestamp())}"
+    else:
+        name = f"anon_{int(datetime.datetime.utcnow().timestamp())}"
+
+    # determine scale bounds if provided in body, fallback to 1..5
+    scale_min = int(body.get("scaleMin", 1) or 1)
+    scale_max = int(body.get("scaleMax", 5) or 5)
+
+    def clamp_round(v):
+        try:
+            rv = round(float(v))
+        except Exception:
+            rv = scale_min
+        return min(max(rv, scale_min), scale_max)
+
+    if isinstance(body.get("answers"), list):
+        for a in body["answers"]:
+            if "value" in a:
+                a["value"] = clamp_round(a["value"])
+
+    ts = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = results_folder / f"result_{name}_{ts}.json"
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(body, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.exception("Failed to save result")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return JSONResponse({"saved": str(filename)})
 
 
 # ---------------------------------------------------------------------------

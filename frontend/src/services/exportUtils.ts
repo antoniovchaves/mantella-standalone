@@ -1,11 +1,19 @@
 import type { ExperimentResult } from "../types/mantella";
+import { EXPERIMENT_META } from "../data/experiment";
+
+function clampAndRound(value: number) {
+  const min = EXPERIMENT_META.scaleMin ?? 1;
+  const max = EXPERIMENT_META.scaleMax ?? EXPERIMENT_META.scale ?? 5;
+  const rounded = Math.round(value);
+  return Math.min(Math.max(rounded, min), max);
+}
 
 export function exportAsJSON(result: ExperimentResult): void {
   const normalized = {
     ...result,
     answers: result.answers.map((a) => ({
       ...a,
-      value: parseFloat(a.value.toFixed(2)),
+      value: clampAndRound(a.value),
     })),
   };
   const blob = new Blob([JSON.stringify(normalized, null, 2)], {
@@ -35,7 +43,7 @@ export function exportAsCSV(result: ExperimentResult): void {
   const answerRows = result.answers.map((a) => [
     a.questionId,
     `"${a.questionText.replace(/"/g, '""')}"`,
-    a.value.toFixed(2),
+    String(clampAndRound(a.value)),
   ]);
 
   const logHeader = ["role", "content", "timestamp"];
@@ -67,4 +75,29 @@ export function exportAsCSV(result: ExperimentResult): void {
   a.download = `experiment_${result.sessionId}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function saveResultToServer(
+  result: ExperimentResult,
+): Promise<void> {
+  try {
+    const normalized = {
+      ...result,
+      scaleMin: EXPERIMENT_META.scaleMin ?? 1,
+      scaleMax: EXPERIMENT_META.scaleMax ?? EXPERIMENT_META.scale ?? 5,
+      answers: result.answers.map((a) => ({
+        ...a,
+        value: clampAndRound(a.value),
+      })),
+    };
+
+    await fetch("http://localhost:8080/save_result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(normalized),
+    });
+  } catch (err) {
+    // Silently fail — saving to server is best-effort
+    console.warn("Failed to save result to server:", err);
+  }
 }

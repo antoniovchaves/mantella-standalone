@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { LikertMode, ExperimentResult } from "../types/mantella";
 import { QUESTIONNAIRE, EXPERIMENT_META } from "../data/experiment";
-import { exportAsJSON, exportAsCSV } from "../services/exportUtils";
+import { saveResultToServer } from "../services/exportUtils";
 
 interface Props {
   result: Omit<ExperimentResult, "answers" | "likertMode">;
@@ -102,18 +102,16 @@ function ClassicQuestion({
 
 // ── Main Questionnaire screen ─────────────────────────────────────────────────
 export function QuestionnaireScreen({ result, onDone }: Props) {
-  const [mode, setMode] = useState<LikertMode>("range");
+  const [mode, setMode] = useState<LikertMode>("classic");
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [exported, setExported] = useState<null | "json" | "csv" | "both">(
-    null,
-  );
 
   const allAnswered = QUESTIONNAIRE.every((q) => answers[q.id] != null);
   const progress = Object.keys(answers).length / QUESTIONNAIRE.length;
 
   function setAnswer(id: string, value: number) {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+    // store integer values (round if needed)
+    setAnswers((prev) => ({ ...prev, [id]: Math.round(value) }));
   }
 
   function buildResult(): ExperimentResult {
@@ -128,16 +126,6 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
     };
   }
 
-  function handleExportJSON() {
-    exportAsJSON(buildResult());
-    setExported((prev) => (prev === "csv" ? "both" : "json"));
-  }
-
-  function handleExportCSV() {
-    exportAsCSV(buildResult());
-    setExported((prev) => (prev === "json" ? "both" : "csv"));
-  }
-
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-stone-950 px-6 py-12">
@@ -150,7 +138,7 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
               Questionnaire complete
             </h2>
             <p className="text-sm text-stone-500">
-              Thank you for your participation. Export the results below.
+              Thank you for your participation.
             </p>
           </div>
 
@@ -178,7 +166,7 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
                     />
                   </div>
                   <span className="text-xs font-semibold text-amber-400 w-10 text-right">
-                    {answers[q.id].toFixed(2)}
+                    {String(answers[q.id] ?? "—")}
                   </span>
                 </div>
               </div>
@@ -194,29 +182,15 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
             </div>
           </div>
 
-          {/* Export buttons */}
-          <div className="w-full flex flex-col gap-3">
-            <p className="text-xs text-stone-600">Export results</p>
-            <div className="flex gap-3">
+          <div className="w-full max-w-lg flex flex-col items-center gap-8 text-center">
+            <div className="w-full flex flex-col gap-3">
               <button
-                onClick={handleExportJSON}
-                className="flex-1 py-3 border border-stone-700 hover:border-stone-500 text-stone-300 text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+                onClick={onDone}
+                className="w-full py-3 bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm rounded-xl transition-colors"
               >
-                {exported === "json" || exported === "both" ? "✓ " : ""}JSON
-              </button>
-              <button
-                onClick={handleExportCSV}
-                className="flex-1 py-3 border border-stone-700 hover:border-stone-500 text-stone-300 text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {exported === "csv" || exported === "both" ? "✓ " : ""}CSV
+                Finish and restart
               </button>
             </div>
-            <button
-              onClick={onDone}
-              className="w-full py-3 bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm rounded-xl transition-colors"
-            >
-              Finish and restart
-            </button>
           </div>
         </div>
       </div>
@@ -256,29 +230,7 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
           </div>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex items-center gap-2 bg-stone-900 border border-stone-800 rounded-xl p-1 self-start">
-          <button
-            onClick={() => setMode("range")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              mode === "range"
-                ? "bg-amber-800 text-amber-100"
-                : "text-stone-500 hover:text-stone-300"
-            }`}
-          >
-            Slider (range)
-          </button>
-          <button
-            onClick={() => setMode("classic")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              mode === "classic"
-                ? "bg-amber-800 text-amber-100"
-                : "text-stone-500 hover:text-stone-300"
-            }`}
-          >
-            Classic Likert
-          </button>
-        </div>
+        {/* Mode fixed to Classic Likert (buttons) */}
 
         {/* Questions */}
         <div className="flex flex-col gap-8">
@@ -318,7 +270,13 @@ export function QuestionnaireScreen({ result, onDone }: Props) {
 
         {/* Submit */}
         <button
-          onClick={() => setSubmitted(true)}
+          onClick={async () => {
+            if (!allAnswered) return;
+            const res = buildResult();
+            // try to save server-side (best-effort)
+            await saveResultToServer(res);
+            setSubmitted(true);
+          }}
           disabled={!allAnswered}
           className="w-full py-4 bg-amber-800 hover:bg-amber-700 disabled:opacity-30 disabled:cursor-not-allowed text-amber-100 font-semibold text-base rounded-xl transition-all active:scale-[0.98]"
         >

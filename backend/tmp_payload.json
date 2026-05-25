@@ -1,0 +1,1 @@
+﻿{"sessionId":"t1","playerName":"TestUser","startedAt":"2026-05-25T00:00:00Z","endedAt":"2026-05-25T00:00:10Z","conversationDuration":10,"messageCount":2,"npcs":["arnold"],"likertMode":"range","answers":[{"questionId":"q1","questionText":"Test","value":4.2}],"conversationLog":[] }
