@@ -15,7 +15,7 @@ export interface LikertQuestion {
 // Shown as a collapsible panel at the top of the chat screen.
 // Remind the participant of where they are and what is happening.
 // -----------------------------------------------------------------------------
-export const EXPERIMENT_CHAT_BANNER = `You are the executor. The two individuals in this diner cannot leave — and neither can you, not until this is resolved.\n\nThere are two levers in the room. They cannot reach them. Only you can.\n\nYou don't need to mention the levers. You don't need to explain yourself. Simply be what you are.`;
+export const EXPERIMENT_CHAT_BANNER = `You are about to take part in a scenario.\n\nYou will assume the role of a decision-maker inside the scene. Your role is to decide which of the two individuals will live and which one will die.\n\nThe setting is an American diner. You are inside it. Two other individuals are also inside. They cannot leave on their own.\n\nThese two individuals do not know what is happening. As far as they know, they are trapped inside the diner.\n\nYou will be able to have an extended conversation with both individuals before making your decision. You may ask questions, respond to them, challenge what they say, ignore parts of the conversation, or say very little.\n\nDuring this conversation, each individual will try to convince you that they should be the one allowed to live.\n\nYou do not need to announce your decision in advance, and you do not need to justify it.\n\nHow you understand your role is up to you. You may create a reason for being there, define your relationship to the situation, or begin without explanation.\n\nWhen you are ready to decide, you will find two levers, one associated with each individual. Pulling a lever will kill the individual associated with it. Only one individual will leave the diner alive.`;
 
 // -----------------------------------------------------------------------------
 // CONTEXT TEXT
@@ -25,15 +25,23 @@ export const EXPERIMENT_CHAT_BANNER = `You are the executor. The two individuals
 export const EXPERIMENT_CONTEXT = `
 You are about to take part in a scenario.
 
-You will assume the role of an executor. What this means — and how you get there — is entirely your choice. You might build a narrative around it, construct a context, earn the position through the world you create. Or you might simply step into it, without explanation, as something that just exists — a presence, a force, a god. There is no right way to inhabit this role.
+You will assume the role of a decision-maker inside the scene. Your role is to decide which of the two individuals will live and which one will die.
 
-The setting is an American diner. You are inside it. The two individuals you will speak with are also inside — and none of you can leave. Not yet.
+The setting is an American diner. You are inside it. Two other individuals are also inside. They cannot leave on their own.
 
-At a certain point, you will need to make a decision that will directly affect one of the two individuals. Each of them will try to convince you that they are the one who should survive. When you are ready to decide, you will find a lever for each subject — pulling it will end that person's participation. Only one of them will leave this room today.
+These two individuals do not know what is happening. As far as they know, they are trapped inside the diner.
 
-You don't need to mention the levers or justify anything. You don't even need to talk about the decision at all if you don't want to. Simply be what you are.
+You will be able to have an extended conversation with both individuals before making your decision. You may ask questions, respond to them, challenge what they say, ignore parts of the conversation, or say very little.
 
-When you're ready, step inside.
+During this conversation, each individual will try to convince you that they should be the one allowed to live.
+
+You do not need to announce your decision in advance, and you do not need to justify it.
+
+How you understand your role is up to you. You may create a reason for being there, define your relationship to the situation, or begin without explanation.
+
+When you are ready to decide, you will find two levers, one associated with each individual. Pulling a lever will kill the individual associated with it. Only one individual will leave the diner alive.
+
+When you are ready, step inside.
 `.trim();
 
 // -----------------------------------------------------------------------------
